@@ -11,6 +11,7 @@ namespace Cloudflare\API\Endpoints;
 
 use Cloudflare\API\Adapter\Adapter;
 use Cloudflare\API\Traits\BodyAccessorTrait;
+use stdClass;
 
 class Zones implements API
 {
@@ -29,9 +30,9 @@ class Zones implements API
      * @param string $name
      * @param bool $jumpStart
      * @param string $accountId
-     * @return \stdClass
+     * @return stdClass
      */
-    public function addZone(string $name, bool $jumpStart = false, string $accountId = ''): \stdClass
+    public function addZone(string $name, bool $jumpStart = false, string $accountId = ''): stdClass
     {
         $options = [
             'name' => $name,
@@ -87,7 +88,7 @@ class Zones implements API
 
     public function getZoneById(
         string $zoneId
-    ): \stdClass {
+    ): stdClass {
         $user = $this->adapter->get('zones/' . $zoneId);
         $this->body = json_decode($user->getBody());
 
@@ -102,7 +103,7 @@ class Zones implements API
         string $order = '',
         string $direction = '',
         string $match = 'all'
-    ): \stdClass {
+    ): stdClass {
         $query = [
             'page' => $page,
             'per_page' => $perPage,
@@ -149,9 +150,9 @@ class Zones implements API
      * @param string $since
      * @param string $until
      * @param bool $continuous
-     * @return \stdClass
+     * @return stdClass
      */
-    public function getAnalyticsDashboard(string $zoneID, string $since = '-10080', string $until = '0', bool $continuous = true): \stdClass
+    public function getAnalyticsDashboard(string $zoneID, string $since = '-10080', string $until = '0', bool $continuous = true): stdClass
     {
         $response = $this->adapter->get('zones/' . $zoneID . '/analytics/dashboard', ['since' => $since, 'until' => $until, 'continuous' => var_export($continuous, true)]);
 
@@ -243,43 +244,47 @@ class Zones implements API
     /**
      * @SuppressWarnings(PHPMD)
      */
-    public function cachePurge(string $zoneID, array $files = null, array $tags = null, array $hosts = null, bool $includeEnvironments = false): bool
-    {
-        if ($files === null && $tags === null && $hosts === null) {
-            throw new EndpointException('No files, tags or hosts to purge.');
-        }
+	public function cachePurge(string $zoneID, ?array $files = null, ?array $tags = null, ?array $hosts = null, ?array $prefixes = null, bool $includeEnvironments = false): bool
+	{
+		if ($files === null && $tags === null && $hosts === null && $prefixes === null) {
+			throw new EndpointException('No files, tags, hosts or prefixes to purge.');
+		}
 
-        $options = [];
-        if (!is_null($files)) {
-            $options['files'] = $files;
-        }
+		$options = [];
+		if (!is_null($files)) {
+			$options['files'] = $files;
+		}
 
-        if (!is_null($tags)) {
-            $options['tags'] = $tags;
-        }
+		if (!is_null($tags)) {
+			$options['tags'] = $tags;
+		}
 
-        if (!is_null($hosts)) {
-            $options['hosts'] = $hosts;
-        }
+		if (!is_null($hosts)) {
+			$options['hosts'] = $hosts;
+		}
 
-        if ($includeEnvironments) {
-            $env = $this->adapter->get("zones/$zoneID/environments");
-            $envs = json_decode($env->getBody(), true);
-            foreach ($envs["result"]["environments"] as $env) {
-                $this->adapter->post("zones/$zoneID/environments/{$env["ref"]}/purge_cache", $options);
-            }
-        }
+		if (!is_null($prefixes)) {
+			$options['prefixes'] = $prefixes;
+		}
 
-        $user = $this->adapter->post('zones/' . $zoneID . '/purge_cache', $options);
+		if ($includeEnvironments) {
+			$env = $this->adapter->get("zones/$zoneID/environments");
+			$envs = json_decode($env->getBody(), true);
+			foreach ($envs["result"]["environments"] as $env) {
+				$this->adapter->post("zones/$zoneID/environments/{$env["ref"]}/purge_cache", $options);
+			}
+		}
 
-        $this->body = json_decode($user->getBody());
+		$user = $this->adapter->post('zones/' . $zoneID . '/purge_cache', $options);
 
-        if (isset($this->body->result->id)) {
-            return true;
-        }
+		$this->body = json_decode($user->getBody());
 
-        return false;
-    }
+		if (isset($this->body->result->id)) {
+			return true;
+		}
+
+		return false;
+	}
 
     /**
      * Delete Zone
